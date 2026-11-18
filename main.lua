@@ -2,7 +2,15 @@ require("src.engine.vars")
 require("src.engine.statevars")
 require("src.engine.vendcust")
 
-DiscordRPC = require("src.lib.discordrpc")
+if love.system.getOS() == "Android" then
+    DiscordRPC = {
+        initialize = function() end,
+        updatePresence = function() end,
+        shutdown = function() end
+    }
+else
+    DiscordRPC = require("src.lib.discordrpc")
+end
 
 local major, _, _, _ = love.getVersion()
 
