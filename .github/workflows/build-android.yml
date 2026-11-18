@@ -1,0 +1,67 @@
+
+name: Kristal Android CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Kristal
+        uses: actions/checkout@v4
+        with:
+          path: kristal
+
+      - name: Checkout LÖVE Android
+        uses: actions/checkout@v4
+        with:
+          repository: love2d/love-android
+          ref: main
+          submodules: recursive
+          path: love-android
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake zip unzip
+
+      - name: Package Kristal
+        run: |
+          mkdir -p love-android/app/src/embed/assets
+
+          cd kristal
+
+          zip -r ../love-android/app/src/embed/assets/game.love . \
+            -x '.git/*' \
+               '.github/*' \
+               '.vscode/*' \
+               'docs/*' \
+               'build/*' \
+               'output/*'
+
+      - name: Build Android APK
+        working-directory: love-android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleEmbedNoRecordRelease
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kristal-Android
+          path: love-android/app/build/outputs/apk/embedNoRecord/release/*.apk
+          if-no-files-found: error
