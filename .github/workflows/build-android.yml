@@ -15,6 +15,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ----------------------------------------
+      # CHECKOUT
+      # ----------------------------------------
+
       - name: Checkout Kristal
         uses: actions/checkout@v4
         with:
@@ -28,6 +32,10 @@ jobs:
           submodules: recursive
           path: love-android
 
+      # ----------------------------------------
+      # JAVA & PYTHON
+      # ----------------------------------------
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -39,10 +47,43 @@ jobs:
         with:
           python-version: '3.x'
 
+      # ----------------------------------------
+      # DEPENDENCIES
+      # ----------------------------------------
+
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build cmake zip unzip
+          sudo apt-get install -y \
+            ninja-build \
+            cmake \
+            zip \
+            unzip
+
+      # ----------------------------------------
+      # GRADLE MEMORY CONFIGURATION
+      # ----------------------------------------
+
+      - name: Configure Gradle memory
+        working-directory: love-android
+        run: |
+          touch gradle.properties
+
+          sed -i '/^org.gradle.jvmargs=/d' gradle.properties
+          sed -i '/^org.gradle.workers.max=/d' gradle.properties
+          sed -i '/^org.gradle.parallel=/d' gradle.properties
+          sed -i '/^org.gradle.daemon=/d' gradle.properties
+
+          cat >> gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8
+          org.gradle.workers.max=2
+          org.gradle.parallel=false
+          org.gradle.daemon=false
+          EOF
+
+      # ----------------------------------------
+      # BUILD KRISTAL ANDROID
+      # ----------------------------------------
 
       - name: Build Kristal Android
         working-directory: kristal
@@ -52,9 +93,28 @@ jobs:
             --android \
             --love-android ../love-android
 
+      # ----------------------------------------
+      # VERIFY APK
+      # ----------------------------------------
+
+      - name: Verify APK
+        run: |
+          if [ ! -f kristal/output/Kristal-Android.apk ]; then
+            echo "ERROR: APK not found!"
+            exit 1
+          fi
+
+          ls -lh kristal/output/Kristal-Android.apk
+
+      # ----------------------------------------
+      # UPLOAD APK
+      # ----------------------------------------
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Kristal-Android
           path: kristal/output/Kristal-Android.apk
           if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
