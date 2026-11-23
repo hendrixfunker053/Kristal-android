@@ -34,34 +34,27 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y ninja-build cmake zip unzip
 
-      - name: Package Kristal
+      - name: Build Kristal Android
+        working-directory: kristal
         run: |
-          mkdir -p love-android/app/src/embed/assets
-
-          cd kristal
-
-          zip -r ../love-android/app/src/embed/assets/game.love . \
-            -x '.git/*' \
-               '.github/*' \
-               '.vscode/*' \
-               'docs/*' \
-               'build/*' \
-               'output/*'
-
-      - name: Build Android APK
-        working-directory: love-android
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleEmbedNoRecordRelease
+          python3 build.py \
+            --kristal . \
+            --android \
+            --love-android ../love-android
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Kristal-Android
-          path: love-android/app/build/outputs/apk/embedNoRecord/release/*.apk
+          path: kristal/output/Kristal-Android.apk
           if-no-files-found: error
